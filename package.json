@@ -1,0 +1,38 @@
+{
+  "name": "stellar-ai",
+  "version": "1.0.0",
+  "description": "晨星·星核 StellarAI —— 站在世界顶级成果之上的本地优先多模态 AI 引擎。集成 Hugging Face transformers.js（SOTA 模型）与 hnswlib（亿级向量 ANN），自研 ReAct 推理编排、工具调用框架与长短时记忆，零 API key、可运行、可复现、可验证。",
+  "type": "module",
+  "main": "src/index.js",
+  "scripts": {
+    "test": "node test/run.js",
+    "demo:browser": "echo '用浏览器打开 index.html 即可运行真实本地 AI'",
+    "example:chat": "node examples/chat.js",
+    "example:rag": "node examples/rag.js"
+  },
+  "keywords": [
+    "ai",
+    "llm",
+    "transformers",
+    "rag",
+    "agent",
+    "react",
+    "embeddings",
+    "vector-search",
+    "hnswlib",
+    "local-first"
+  ],
+  "author": "晨星",
+  "license": "MIT",
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {},
+  "optionalDependencies": {
+    "@huggingface/transformers": "^3.0.0",
+    "hnswlib-node": "^3.0.0"
+  },
+  "devDependencies": {
+    "eslint": "^9.0.0"
+  }
+}

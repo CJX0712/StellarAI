@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>晨星·星核 StellarAI · 本地优先多模态 AI 引擎</title>
+<style>
+  :root{
+    --bg:#0e1117; --panel:#161b22; --panel2:#1c2330; --line:#2a3340;
+    --fg:#e6edf3; --muted:#8b949e; --accent:#6ea8fe; --accent2:#7ee787;
+    --warn:#f0883e; --radius:14px; --mono:'SFMono-Regular',Consolas,'Liberation Mono',Menlo,monospace;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:linear-gradient(180deg,#0b0f15,#0e1117 280px);color:var(--fg);
+    font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC','Microsoft YaHei',sans-serif;line-height:1.6}
+  .wrap{max-width:920px;margin:0 auto;padding:28px 18px 60px}
+  header{display:flex;align-items:center;gap:14px;margin-bottom:6px}
+  .logo{width:46px;height:46px;border-radius:12px;background:radial-gradient(circle at 30% 30%,#9ecbff,#6ea8fe 40%,#3b6fd4);
+    display:grid;place-items:center;font-weight:800;color:#06121f;font-size:20px;box-shadow:0 6px 22px rgba(110,168,254,.35)}
+  h1{font-size:22px;margin:0;letter-spacing:.5px}
+  .sub{color:var(--muted);font-size:13px;margin:2px 0 18px}
+  .badges{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0 22px}
+  .badge{font-size:12px;padding:5px 10px;border:1px solid var(--line);background:var(--panel);border-radius:999px;color:var(--muted)}
+  .badge b{color:var(--accent2)}
+  .tabs{display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap}
+  .tab{padding:9px 16px;border:1px solid var(--line);background:var(--panel);color:var(--muted);
+    border-radius:10px;cursor:pointer;font-size:14px;transition:.15s}
+  .tab.active{color:#06121f;background:var(--accent);border-color:var(--accent);font-weight:700}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:18px}
+  .pane{display:none} .pane.active{display:block;animation:fade .25s ease}
+  @keyframes fade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+  label{display:block;font-size:13px;color:var(--muted);margin:12px 0 6px}
+  textarea,input{width:100%;background:var(--panel2);border:1px solid var(--line);color:var(--fg);
+    border-radius:10px;padding:11px 12px;font-size:14px;font-family:inherit;resize:vertical}
+  textarea{min-height:84px}
+  button{margin-top:14px;background:var(--accent);color:#06121f;border:0;border-radius:10px;
+    padding:11px 20px;font-size:14px;font-weight:700;cursor:pointer;transition:.15s}
+  button:hover{filter:brightness(1.08)} button:disabled{opacity:.5;cursor:not-allowed}
+  .out{margin-top:16px;background:#0a0e14;border:1px solid var(--line);border-radius:10px;padding:14px;
+    font-family:var(--mono);font-size:13.5px;white-space:pre-wrap;min-height:48px;color:var(--fg)}
+  .status{margin-top:10px;font-size:12.5px;color:var(--muted);min-height:18px}
+  .bar{height:6px;background:var(--panel2);border-radius:6px;margin-top:8px;overflow:hidden;display:none}
+  .bar i{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--accent),var(--accent2));transition:width .2s}
+  .rank{display:flex;justify-content:space-between;gap:12px;padding:8px 0;border-bottom:1px dashed var(--line);font-size:13.5px}
+  .rank:last-child{border-bottom:0}
+  .score{color:var(--accent2);font-family:var(--mono)}
+  .pill{display:inline-block;padding:2px 9px;border-radius:999px;font-size:12px;font-weight:700}
+  .pos{background:rgba(126,231,135,.15);color:var(--accent2)}
+  .neg{background:rgba(240,136,62,.15);color:var(--warn)}
+  footer{margin-top:30px;color:var(--muted);font-size:12px;text-align:center}
+  a{color:var(--accent)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="logo">星</div>
+    <div>
+      <h1>晨星·星核 StellarAI</h1>
+      <div class="sub">本地优先 · 多模态 AI 引擎 — 模型在你浏览器里跑，零 API key、零上传、零费用</div>
+    </div>
+  </header>
+
+  <div class="badges">
+    <span class="badge">后端 <b>transformers.js</b> (Hugging Face 官方)</span>
+    <span class="badge">检索 <b>hnswlib</b> (Facebook AI ANN)</span>
+    <span class="badge">范式 <b>ReAct</b> 推理编排</span>
+    <span class="badge">署名 <b>晨星</b></span>
+    <span class="badge" id="deviceBadge">设备检测中…</span>
+  </div>
+
+  <div class="tabs">
+    <div class="tab active" data-pane="sim">语义检索</div>
+    <div class="tab" data-pane="gen">文本生成</div>
+    <div class="tab" data-pane="sent">情感分析</div>
+  </div>
+
+  <!-- 语义检索 -->
+  <div class="pane active card" id="sim">
+    <label>语料库（每行一条，或逗号分隔）</label>
+    <textarea id="simDocs">苹果公司发布新款 iPhone
+Transformer 是大模型的核心架构
+晨星正在锻造世界顶级 AI 系统
+篮球是深受欢迎的团队运动
+向量数据库用于语义检索</textarea>
+    <label>查询</label>
+    <input id="simQuery" value="关于人工智能的新闻" />
+    <button id="simRun">开始语义检索</button>
+    <div class="bar" id="simBar"><i></i></div>
+    <div class="status" id="simStatus"></div>
+    <div class="out" id="simOut">—</div>
+  </div>
+
+  <!-- 文本生成 -->
+  <div class="pane card" id="gen">
+    <label>提示词 Prompt</label>
+    <textarea id="genPrompt">人工智能的未来在于</textarea>
+    <label>生成长度（token）</label>
+    <input id="genLen" value="48" />
+    <button id="genRun">生成文本</button>
+    <div class="bar" id="genBar"><i></i></div>
+    <div class="status" id="genStatus"></div>
+    <div class="out" id="genOut">—</div>
+  </div>
+
+  <!-- 情感分析 -->
+  <div class="pane card" id="sent">
+    <label>待分析文本</label>
+    <textarea id="sentText">这部电影太精彩了，我强烈推荐！</textarea>
+    <button id="sentRun">分析情感</button>
+    <div class="bar" id="sentBar"><i></i></div>
+    <div class="status" id="sentStatus"></div>
+    <div class="out" id="sentOut">—</div>
+  </div>
+
+  <footer>
+    晨星·星核 StellarAI · 站在世界顶级成果之上 · 完整源码与文档见
+    <a href="https://github.com/CJX0712/StellarAI" target="_blank" rel="noreferrer">GitHub/CJX0712/StellarAI</a><br/>
+    首次运行需从 CDN 下载模型（约 20–300MB，取决于网络），之后浏览器缓存复用。
+  </footer>
+</div>
+
+<script type="module">
+import * as T from 'https://cdn.jsdelivr.net/npm/@huggingface/transformers@3';
+const { pipeline, env } = T;
+env.allowLocalModels = false;           // 强制走 CDN
+env.useBrowserCache = true;
+
+// 设备检测（WebGPU 优先，否则 WASM）
+let DEVICE = 'wasm';
+try { if (navigator.gpu) DEVICE = 'webgpu'; } catch {}
+document.getElementById('deviceBadge').textContent = '设备: ' + DEVICE.toUpperCase();
+
+const cache = new Map();                // 模型实例缓存，避免重复加载
+async function getPipe(task, model) {
+  const key = task + '|' + model;
+  if (cache.has(key)) return cache.get(key);
+  const pipe = await pipeline(task, model, { device: DEVICE, dtype: DEVICE === 'webgpu' ? 'fp32' : 'q8' });
+  cache.set(key, pipe);
+  return pipe;
+}
+
+// 进度绑定
+function bind(progress, barEl, statusEl) {
+  progress((p) => {
+    const pct = Math.round((p.progress || 0) * 100);
+    barEl.style.display = 'block';
+    barEl.firstElementChild.style.width = pct + '%';
+    statusEl.textContent = `加载模型 ${pct}% · ${p.file || ''}`;
+  });
+}
+// 简单的余弦相似度（与引擎 math 模块一致）
+function cosine(a, b){let s=0,na=0,nb=0;for(let i=0;i<a.length;i++){s+=a[i]*b[i];na+=a[i]*a[i];nb+=b[i]*b[i];}return s/(Math.sqrt(na)*Math.sqrt(nb));}
+
+// ── Tab 切换 ──
+document.querySelectorAll('.tab').forEach(t=>t.onclick=()=>{
+  document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
+  document.querySelectorAll('.pane').forEach(x=>x.classList.remove('active'));
+  t.classList.add('active');
+  document.getElementById(t.dataset.pane).classList.add('active');
+});
+
+// ── 语义检索 ──
+document.getElementById('simRun').onclick = async (e)=>{
+  const btn=e.target, out=document.getElementById('simOut'), st=document.getElementById('simStatus'), bar=document.getElementById('simBar');
+  btn.disabled=true; st.textContent='初始化嵌入模型…';
+  try{
+    const pipe=await getPipe('feature-extraction','Xenova/all-MiniLM-L6-v2');
+    bind(pipe.progress_callback, bar, st);
+    const docs=document.getElementById('simDocs').value.split(/\n|，|,/).map(s=>s.trim()).filter(Boolean);
+    const query=document.getElementById('simQuery').value.trim();
+    st.textContent='编码中…';
+    const enc=await pipe([query,...docs],{pooling:'mean',normalize:true});
+    const data=Array.from(enc.data); const per=data.length/(docs.length+1);
+    const qv=data.slice(0,per);
+    const scored=docs.map((d,i)=>({d,score:cosine(qv,data.slice((i+1)*per,(i+2)*per))}));
+    scored.sort((a,b)=>b.score-a.score);
+    out.innerHTML=scored.map(r=>`<div class="rank"><span>${r.d}</span><span class="score">${(r.score*100).toFixed(1)}%</span></div>`).join('');
+    st.textContent=`完成 · 已对 ${docs.length} 条文档排序`;
+  }catch(err){ out.textContent='错误: '+err.message; st.textContent='失败'; }
+  btn.disabled=false;
+};
+
+// ── 文本生成 ──
+document.getElementById('genRun').onclick = async (e)=>{
+  const btn=e.target, out=document.getElementById('genOut'), st=document.getElementById('genStatus'), bar=document.getElementById('genBar');
+  btn.disabled=true; st.textContent='加载生成模型…';
+  try{
+    const pipe=await getPipe('text-generation','Xenova/distilgpt2');
+    bind(pipe.progress_callback, bar, st);
+    const prompt=document.getElementById('genPrompt').value;
+    const len=Math.max(8,Math.min(256,+document.getElementById('genLen').value||48));
+    st.textContent='生成中…';
+    const res=await pipe(prompt,{max_new_tokens:len,do_sample:true,temperature:0.9,top_p:0.95,return_full_text:true});
+    out.textContent=res[0].generated_text;
+    st.textContent='完成';
+  }catch(err){ out.textContent='错误: '+err.message; st.textContent='失败'; }
+  btn.disabled=false;
+};
+
+// ── 情感分析 ──
+document.getElementById('sentRun').onclick = async (e)=>{
+  const btn=e.target, out=document.getElementById('sentOut'), st=document.getElementById('sentStatus'), bar=document.getElementById('sentBar');
+  btn.disabled=true; st.textContent='加载分类模型…';
+  try{
+    const pipe=await getPipe('text-classification','Xenova/distilbert-base-uncased-finetuned-sst-2-english');
+    bind(pipe.progress_callback, bar, st);
+    const text=document.getElementById('sentText').value.trim();
+    st.textContent='分析中…';
+    const res=await pipe(text);
+    const top=res[0];
+    const pos=top.label==='POSITIVE';
+    out.innerHTML=`<span class="pill ${pos?'pos':'neg'}">${top.label}</span>  置信度 <b>${(top.score*100).toFixed(1)}%</b>\n\n${text}`;
+    st.textContent='完成';
+  }catch(err){ out.textContent='错误: '+err.message; st.textContent='失败'; }
+  btn.disabled=false;
+};
+</script>
+</body>
+</html>
